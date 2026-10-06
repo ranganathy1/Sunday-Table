@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: food-ordering-config
+  namespace: food-ordering
+data:
+  APP_NAME: "Sunday Table API"
+  API_PREFIX: "/api/v1"
+  JWT_ALGORITHM: "HS256"
+  ALLOW_SQLITE_FALLBACK: "false"
+  REQUIRE_REDIS: "false"
+  DELIVERY_SPEED_KMH: "20"
+  PREP_BUFFER_MINUTES: "12"

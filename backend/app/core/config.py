@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     app_name: str = "Real-Time Food Ordering API"
     api_prefix: str = "/api/v1"
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/food_ordering"
-    redis_url: str = "redis://localhost:6379/0"
+    redis_url: str = ""
     jwt_secret: str = "dev-secret-change-me-please-keep-long"
     jwt_algorithm: str = "HS256"
     allow_sqlite_fallback: bool = True

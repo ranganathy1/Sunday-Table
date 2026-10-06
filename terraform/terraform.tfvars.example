@@ -1,0 +1,7 @@
+aws_region                  = "us-east-1"
+project_name                = "food-ordering"
+environment                 = "learning"
+github_repository           = "ranganathy1/Sunday-Table"
+github_environment          = "aws-learning"
+cluster_public_access_cidrs = ["203.0.113.10/32"]
+enable_redis                = false

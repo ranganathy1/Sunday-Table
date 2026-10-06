@@ -1,14 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.sqlite3
+*.db
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+backend/.venv/
+backend/*.db
+backend/food_ordering_demo.db
+backend/*.log
+
+# Node
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/*.log
+
+# Environment
+.env
+.env.*
+!.env.example
+!**/.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
 terraform/terraform.tfvars
 terraform/*.tfstate
 terraform/*.tfstate.*
 terraform/tfplan
 terraform/.terraform/
 *.tfplan
+secret.json
+diagnostics/
 
-node_modules/
-frontend/node_modules/
-frontend/dist/
-frontend/*.log
-.venv/
-backend/.venv/
-backend/*.log
+# OS/editor
+.DS_Store
+.idea/
+.vscode/

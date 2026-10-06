@@ -35,23 +35,23 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     redis: Redis | None = None
     candidate: Redis | None = None
-    try:
-        candidate = Redis.from_url(
-            settings.redis_url,
-            decode_responses=True,
-            socket_connect_timeout=3,
-            socket_timeout=3,
-        )
-        await candidate.ping()
-        redis = candidate
-    except (RedisError, OSError, ValueError):
-        if settings.require_redis:
-            logger.error("Required Redis is unavailable; readiness checks will fail", exc_info=True)
-        else:
-            logger.warning("Redis is unavailable; cross-instance live updates are disabled", exc_info=True)
-        if candidate is not None:
-            await candidate.aclose()
-        redis = None
+    if settings.redis_url:
+        try:
+            candidate = Redis.from_url(
+                settings.redis_url,
+                decode_responses=True,
+                socket_connect_timeout=3,
+                socket_timeout=3,
+            )
+            await candidate.ping()
+            redis = candidate
+        except (RedisError, OSError, ValueError):
+            if settings.require_redis:
+                logger.error("Required Redis is unavailable; readiness checks will fail", exc_info=True)
+            else:
+                logger.warning("Redis is unavailable; cross-instance live updates are disabled", exc_info=True)
+            if candidate is not None:
+                await candidate.aclose()
 
     connection_manager = OrderConnectionManager()
     app.state.redis = redis
