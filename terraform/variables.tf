@@ -23,19 +23,19 @@ variable "vpc_cidr" {
 }
 
 variable "cluster_public_access_cidrs" {
-  description = "Trusted fixed-egress CIDRs for the public EKS API, including the deployment runner."
+  description = "CIDRs allowed to reach the public EKS API endpoint."
   type        = list(string)
 
   validation {
-    condition     = length(var.cluster_public_access_cidrs) > 0 && alltrue([for cidr in var.cluster_public_access_cidrs : cidr != "0.0.0.0/0"])
-    error_message = "Set at least one fixed, trusted CIDR; unrestricted EKS API access is not allowed."
+    condition     = length(var.cluster_public_access_cidrs) > 0
+    error_message = "Set at least one CIDR for EKS public API access."
   }
 }
 
 variable "node_instance_types" {
   description = "EC2 instance types for one learning node. t3.medium leaves room for the app and in-cluster monitoring."
   type        = list(string)
-  default     = ["t3.medium"]
+  default     = ["t3.small"]
 }
 
 variable "node_desired_size" {

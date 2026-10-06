@@ -76,17 +76,50 @@ jobs:
     if: ${{ inputs.deploy_to_aws }}
     runs-on: ubuntu-latest
     environment: aws-learning
+
     permissions:
       contents: read
       id-token: write
+
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
       AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
       ECR_REPOSITORY_URI: ${{ vars.ECR_REPOSITORY_URI }}
       EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME }}
       APP_CONFIG_PARAMETER: ${{ vars.APP_CONFIG_PARAMETER }}
+
     steps:
       - uses: actions/checkout@v4
+
+      - name: Debug GitHub OIDC claims
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          token="$(
+            curl -sSf \
+              -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+              "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" \
+            | python -c 'import json,sys; print(json.load(sys.stdin)["value"])'
+          )"
+
+          python - "$token" <<'PY'
+          import base64
+          import json
+          import sys
+
+          token = sys.argv[1]
+          payload = token.split(".")[1]
+          payload += "=" * (-len(payload) % 4)
+
+          claims = json.loads(
+              base64.urlsafe_b64decode(payload)
+          )
+
+          print("OIDC issuer:", claims.get("iss"))
+          print("OIDC audience:", claims.get("aud"))
+          print("OIDC subject:", claims.get("sub"))
+          PY
 
       - name: Configure AWS credentials through OIDC
         uses: aws-actions/configure-aws-credentials@v4
@@ -101,15 +134,26 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           image_uri="${ECR_REPOSITORY_URI}:${GITHUB_SHA}"
+
           docker build --pull --tag "$image_uri" .
           docker push "$image_uri"
+
           echo "IMAGE_URI=$image_uri" >> "$GITHUB_ENV"
 
       - name: Configure Kubernetes access
         shell: bash
-        run: aws eks update-kubeconfig --region "$AWS_REGION" --name "$EKS_CLUSTER_NAME"
+        run: |
+          set -euo pipefail
+
+          aws eks update-kubeconfig \
+            --region "$AWS_REGION" \
+            --name "$EKS_CLUSTER_NAME"
 
       - name: Deploy application and monitoring
         shell: bash
-        run: ci/deploy.sh
+        run: |
+          set -euo pipefail
+
+          ci/deploy.sh

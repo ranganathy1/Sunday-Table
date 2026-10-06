@@ -14,12 +14,18 @@ resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
   enable_dns_hostnames = true
   enable_dns_support   = true
-  tags                 = { Name = "${local.name}-vpc" }
+
+  tags = {
+    Name = "${local.name}-vpc"
+  }
 }
 
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
-  tags   = { Name = "${local.name}-igw" }
+
+  tags = {
+    Name = "${local.name}-igw"
+  }
 }
 
 resource "aws_subnet" "public" {
@@ -28,6 +34,7 @@ resource "aws_subnet" "public" {
   availability_zone       = local.azs[count.index]
   cidr_block              = local.public_subnets[count.index]
   map_public_ip_on_launch = true
+
   tags = {
     Name                                      = "${local.name}-public-${count.index + 1}"
     "kubernetes.io/cluster/${local.name}-eks" = "shared"
@@ -39,6 +46,7 @@ resource "aws_subnet" "private" {
   vpc_id            = aws_vpc.main.id
   availability_zone = local.azs[count.index]
   cidr_block        = local.private_subnets[count.index]
+
   tags = {
     Name                                      = "${local.name}-private-${count.index + 1}"
     "kubernetes.io/cluster/${local.name}-eks" = "shared"
@@ -47,11 +55,15 @@ resource "aws_subnet" "private" {
 
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
+
   route {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.main.id
   }
-  tags = { Name = "${local.name}-public" }
+
+  tags = {
+    Name = "${local.name}-public"
+  }
 }
 
 resource "aws_route_table_association" "public" {
@@ -64,6 +76,7 @@ resource "aws_security_group" "database" {
   name        = "${local.name}-database"
   description = "PostgreSQL ingress only from the EKS cluster."
   vpc_id      = aws_vpc.main.id
+
   ingress {
     description     = "PostgreSQL from EKS"
     protocol        = "tcp"
@@ -71,13 +84,17 @@ resource "aws_security_group" "database" {
     to_port         = 5432
     security_groups = [aws_eks_cluster.main.vpc_config[0].cluster_security_group_id]
   }
+
   egress {
     protocol    = "-1"
     from_port   = 0
     to_port     = 0
     cidr_blocks = ["0.0.0.0/0"]
   }
-  tags = { Name = "${local.name}-database" }
+
+  tags = {
+    Name = "${local.name}-database"
+  }
 }
 
 resource "aws_security_group" "redis" {
@@ -85,6 +102,7 @@ resource "aws_security_group" "redis" {
   name        = "${local.name}-redis"
   description = "Redis TLS ingress only from the EKS cluster."
   vpc_id      = aws_vpc.main.id
+
   ingress {
     description     = "Redis TLS from EKS"
     protocol        = "tcp"
@@ -92,19 +110,25 @@ resource "aws_security_group" "redis" {
     to_port         = 6379
     security_groups = [aws_eks_cluster.main.vpc_config[0].cluster_security_group_id]
   }
+
   egress {
     protocol    = "-1"
     from_port   = 0
     to_port     = 0
     cidr_blocks = ["0.0.0.0/0"]
   }
-  tags = { Name = "${local.name}-redis" }
+
+  tags = {
+    Name = "${local.name}-redis"
+  }
 }
 
 resource "aws_iam_role" "eks_cluster" {
   name = "${local.name}-eks-cluster"
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
+
     Statement = [{
       Effect    = "Allow"
       Principal = { Service = "eks.amazonaws.com" }
@@ -120,8 +144,10 @@ resource "aws_iam_role_policy_attachment" "eks_cluster" {
 
 resource "aws_iam_role" "eks_nodes" {
   name = "${local.name}-eks-nodes"
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
+
     Statement = [{
       Effect    = "Allow"
       Principal = { Service = "ec2.amazonaws.com" }
@@ -163,8 +189,15 @@ resource "aws_eks_cluster" "main" {
   }
 
   enabled_cluster_log_types = ["api"]
-  depends_on                = [aws_iam_role_policy_attachment.eks_cluster, aws_cloudwatch_log_group.eks]
-  tags                      = { Name = "${local.name}-eks" }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.eks_cluster,
+    aws_cloudwatch_log_group.eks
+  ]
+
+  tags = {
+    Name = "${local.name}-eks"
+  }
 }
 
 resource "aws_cloudwatch_log_group" "eks" {
@@ -192,8 +225,10 @@ resource "aws_eks_node_group" "main" {
   cluster_name    = aws_eks_cluster.main.name
   node_group_name = "${local.name}-workers"
   node_role_arn   = aws_iam_role.eks_nodes.arn
-  # Public subnets provide outbound access through the Internet Gateway without
-  # a NAT Gateway. RDS and optional Redis remain in private subnets.
+
+  # Public subnets provide outbound access through the Internet Gateway
+  # without requiring a NAT Gateway.
+  # RDS and optional Redis remain in private subnets.
   subnet_ids     = aws_subnet.public[*].id
   instance_types = var.node_instance_types
   disk_size      = var.node_disk_size
@@ -208,15 +243,17 @@ resource "aws_eks_node_group" "main" {
     max_unavailable = 1
   }
 
+  # The node group must be available before EKS add-ons that
+  # require schedulable worker nodes can become healthy.
   depends_on = [
     aws_iam_role_policy_attachment.node_worker,
     aws_iam_role_policy_attachment.node_cni,
     aws_iam_role_policy_attachment.node_ecr,
-    aws_eks_addon.coredns,
-    aws_eks_addon.kube_proxy,
-    aws_eks_addon.vpc_cni,
   ]
-  tags = { Name = "${local.name}-workers" }
+
+  tags = {
+    Name = "${local.name}-workers"
+  }
 }
 
 resource "aws_eks_access_entry" "github_actions" {
@@ -229,6 +266,7 @@ resource "aws_eks_access_policy_association" "github_actions_admin" {
   cluster_name  = aws_eks_cluster.main.name
   principal_arn = aws_iam_role.github_actions.arn
   policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSAdminPolicy"
+
   access_scope {
     type       = "namespace"
     namespaces = ["food-ordering", "monitoring"]
@@ -238,7 +276,10 @@ resource "aws_eks_access_policy_association" "github_actions_admin" {
 resource "aws_db_subnet_group" "main" {
   name       = "${local.name}-rds"
   subnet_ids = aws_subnet.private[*].id
-  tags       = { Name = "${local.name}-rds" }
+
+  tags = {
+    Name = "${local.name}-rds"
+  }
 }
 
 resource "random_password" "database" {
@@ -292,7 +333,10 @@ resource "aws_db_instance" "postgres" {
   auto_minor_version_upgrade = true
   copy_tags_to_snapshot      = true
   skip_final_snapshot        = true
-  tags                       = { Name = "${local.name}-postgres" }
+
+  tags = {
+    Name = "${local.name}-postgres"
+  }
 }
 
 resource "aws_elasticache_subnet_group" "main" {
@@ -317,7 +361,10 @@ resource "aws_elasticache_replication_group" "redis" {
   at_rest_encryption_enabled = true
   transit_encryption_enabled = true
   auth_token                 = random_password.redis[0].result
-  tags                       = { Name = "${local.name}-redis" }
+
+  tags = {
+    Name = "${local.name}-redis"
+  }
 }
 
 resource "aws_ssm_parameter" "application" {
@@ -325,6 +372,7 @@ resource "aws_ssm_parameter" "application" {
   description = "Runtime and migration credentials for Sunday Table."
   type        = "SecureString"
   tier        = "Standard"
+
   value = jsonencode({
     DATABASE_URL           = "postgresql+asyncpg://${var.application_db_username}:${random_password.application_database.result}@${aws_db_instance.postgres.address}:5432/${var.db_name}"
     DB_ADMIN_URL           = "postgresql+asyncpg://${var.db_username}:${random_password.database.result}@${aws_db_instance.postgres.address}:5432/${var.db_name}"
@@ -341,9 +389,11 @@ resource "aws_ecr_repository" "app" {
   name                 = "${var.project_name}/app"
   image_tag_mutability = "IMMUTABLE"
   force_delete         = true
+
   image_scanning_configuration {
     scan_on_push = true
   }
+
   encryption_configuration {
     encryption_type = "AES256"
   }
@@ -351,16 +401,21 @@ resource "aws_ecr_repository" "app" {
 
 resource "aws_ecr_lifecycle_policy" "app" {
   repository = aws_ecr_repository.app.name
+
   policy = jsonencode({
     rules = [{
       rulePriority = 1
       description  = "Keep the 5 most recent images."
+
       selection = {
         tagStatus   = "any"
         countType   = "imageCountMoreThan"
         countNumber = 5
       }
-      action = { type = "expire" }
+
+      action = {
+        type = "expire"
+      }
     }]
   })
 }
@@ -372,12 +427,15 @@ resource "aws_iam_openid_connect_provider" "github_actions" {
 
 resource "aws_iam_role" "github_actions" {
   name = "${local.name}-github-actions"
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
+
     Statement = [{
       Effect    = "Allow"
       Principal = { Federated = aws_iam_openid_connect_provider.github_actions.arn }
       Action    = "sts:AssumeRoleWithWebIdentity"
+
       Condition = {
         StringEquals = {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
@@ -391,12 +449,16 @@ resource "aws_iam_role" "github_actions" {
 resource "aws_iam_role_policy" "github_actions" {
   name = "${local.name}-github-deploy"
   role = aws_iam_role.github_actions.id
+
   policy = jsonencode({
     Version = "2012-10-17"
+
     Statement = [
       {
-        Effect   = "Allow"
-        Action   = ["ecr:GetAuthorizationToken"]
+        Effect = "Allow"
+        Action = [
+          "ecr:GetAuthorizationToken"
+        ]
         Resource = "*"
       },
       {
@@ -406,33 +468,47 @@ resource "aws_iam_role_policy" "github_actions" {
           "ecr:CompleteLayerUpload",
           "ecr:InitiateLayerUpload",
           "ecr:PutImage",
-          "ecr:UploadLayerPart",
+          "ecr:UploadLayerPart"
         ]
-        Resource = [aws_ecr_repository.app.arn]
+        Resource = [
+          aws_ecr_repository.app.arn
+        ]
       },
       {
-        Effect   = "Allow"
-        Action   = ["eks:DescribeCluster"]
-        Resource = [aws_eks_cluster.main.arn]
+        Effect = "Allow"
+        Action = [
+          "eks:DescribeCluster"
+        ]
+        Resource = [
+          aws_eks_cluster.main.arn
+        ]
       },
       {
-        Effect   = "Allow"
-        Action   = ["ssm:GetParameter"]
-        Resource = [aws_ssm_parameter.application.arn]
+        Effect = "Allow"
+        Action = [
+          "ssm:GetParameter"
+        ]
+        Resource = [
+          aws_ssm_parameter.application.arn
+        ]
       },
       {
-        Effect   = "Allow"
-        Action   = ["kms:Decrypt"]
+        Effect = "Allow"
+        Action = [
+          "kms:Decrypt"
+        ]
         Resource = "*"
+
         Condition = {
           StringEquals = {
             "kms:ViaService" = "ssm.${var.aws_region}.amazonaws.com"
           }
+
           StringLike = {
             "kms:EncryptionContext:PARAMETER_ARN" = aws_ssm_parameter.application.arn
           }
         }
-      },
+      }
     ]
   })
 }
