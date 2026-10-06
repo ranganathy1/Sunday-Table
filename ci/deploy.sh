@@ -10,6 +10,19 @@ umask 077
 
 secret_file="$(mktemp)"
 trap 'rm -f "$secret_file"' EXIT
+
+echo "Creating Kubernetes namespaces..."
+
+kubectl create namespace food-ordering \
+  --dry-run=client \
+  -o yaml | kubectl apply -f -
+
+kubectl create namespace monitoring \
+  --dry-run=client \
+  -o yaml | kubectl apply -f -
+
+echo "Retrieving application configuration from SSM..."
+
 aws ssm get-parameter \
   --region "$AWS_REGION" \
   --name "$APP_CONFIG_PARAMETER" \
@@ -17,23 +30,76 @@ aws ssm get-parameter \
   --query Parameter.Value \
   --output text > "$secret_file"
 
+echo "Deploying monitoring stack..."
+
 kubectl apply -f monitoring/k8s/monitoring.yaml
+
+echo "Deploying application configuration..."
+
 kubectl apply -f k8s/configmap.yaml
 
-python3 ci/render-kubernetes-secrets.py "$secret_file" | kubectl apply --server-side --field-manager=github-actions-deployer -f -
+echo "Creating application secrets..."
 
-envsubst '${IMAGE_URI}' < k8s/migration-job.yaml | kubectl delete -f - --ignore-not-found=true
-envsubst '${IMAGE_URI}' < k8s/migration-job.yaml | kubectl apply -f -
-kubectl wait --namespace food-ordering \
-  --for=condition=complete job/food-ordering-migrate --timeout=10m
+python3 ci/render-kubernetes-secrets.py "$secret_file" \
+  | kubectl apply \
+      --server-side \
+      --field-manager=github-actions-deployer \
+      -f -
 
-envsubst '${IMAGE_URI}' < k8s/deployment.yaml | kubectl apply -f -
+echo "Running database migration..."
+
+envsubst '${IMAGE_URI}' < k8s/migration-job.yaml \
+  | kubectl delete -f - --ignore-not-found=true
+
+envsubst '${IMAGE_URI}' < k8s/migration-job.yaml \
+  | kubectl apply -f -
+
+kubectl wait \
+  --namespace food-ordering \
+  --for=condition=complete \
+  job/food-ordering-migrate \
+  --timeout=10m
+
+echo "Deploying application..."
+
+envsubst '${IMAGE_URI}' < k8s/deployment.yaml \
+  | kubectl apply -f -
+
 kubectl apply -f k8s/service.yaml
-kubectl rollout status --namespace food-ordering deployment/food-ordering --timeout=5m
-kubectl rollout status --namespace monitoring deployment/prometheus --timeout=5m
-kubectl rollout status --namespace monitoring deployment/grafana --timeout=5m
-kubectl rollout status --namespace monitoring deployment/alertmanager --timeout=5m
-kubectl rollout status --namespace monitoring deployment/kube-state-metrics --timeout=5m
+
+echo "Waiting for application rollout..."
+
+kubectl rollout status \
+  --namespace food-ordering \
+  deployment/food-ordering \
+  --timeout=5m
+
+echo "Waiting for monitoring rollout..."
+
+kubectl rollout status \
+  --namespace monitoring \
+  deployment/prometheus \
+  --timeout=5m
+
+kubectl rollout status \
+  --namespace monitoring \
+  deployment/grafana \
+  --timeout=5m
+
+kubectl rollout status \
+  --namespace monitoring \
+  deployment/alertmanager \
+  --timeout=5m
+
+kubectl rollout status \
+  --namespace monitoring \
+  deployment/kube-state-metrics \
+  --timeout=5m
 
 echo "Application rollout succeeded for ${GITHUB_SHA}."
+
+echo "Food-ordering resources:"
 kubectl get pods,service --namespace food-ordering
+
+echo "Monitoring resources:"
+kubectl get pods,service --namespace monitoring
