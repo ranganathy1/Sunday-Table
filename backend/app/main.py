@@ -152,7 +152,7 @@ async def order_updates(
         await manager.disconnect(order_id, websocket)
 
 
-FRONTEND_DIST = Path(__file__).resolve().parents[2] / "frontend_dist"
+FRONTEND_DIST = Path(__file__).resolve().parents[1] / "frontend_dist"
 FRONTEND_ASSETS = FRONTEND_DIST / "assets"
 if FRONTEND_ASSETS.is_dir():
     app.mount("/assets", StaticFiles(directory=FRONTEND_ASSETS), name="frontend-assets")
