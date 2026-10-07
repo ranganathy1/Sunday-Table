@@ -1,4 +1,104 @@
 apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+  namespace: monitoring
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kube-state-metrics
+  namespace: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus
+rules:
+  - apiGroups: [""]
+    resources:
+      - nodes
+      - nodes/proxy
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus
+subjects:
+  - kind: ServiceAccount
+    name: prometheus
+    namespace: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kube-state-metrics
+rules:
+  - apiGroups: [""]
+    resources:
+      - nodes
+      - pods
+      - namespaces
+      - services
+      - endpoints
+      - replicationcontrollers
+      - resourcequotas
+      - persistentvolumes
+      - persistentvolumeclaims
+    verbs:
+      - list
+      - watch
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+      - daemonsets
+      - statefulsets
+      - replicasets
+    verbs:
+      - list
+      - watch
+  - apiGroups: ["batch"]
+    resources:
+      - jobs
+      - cronjobs
+    verbs:
+      - list
+      - watch
+  - apiGroups: ["autoscaling"]
+    resources:
+      - horizontalpodautoscalers
+    verbs:
+      - list
+      - watch
+  - apiGroups: ["storage.k8s.io"]
+    resources:
+      - storageclasses
+    verbs:
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kube-state-metrics
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kube-state-metrics
+subjects:
+  - kind: ServiceAccount
+    name: kube-state-metrics
+    namespace: monitoring
+---
+apiVersion: v1
 kind: ConfigMap
 metadata:
   name: prometheus-config
@@ -18,14 +118,17 @@ data:
       - job_name: prometheus
         static_configs:
           - targets: ["localhost:9090"]
+
       - job_name: food-ordering
         metrics_path: /metrics
         bearer_token_file: /etc/prometheus/metrics-auth/token
         static_configs:
           - targets: ["food-ordering.food-ordering.svc.cluster.local:8000"]
+
       - job_name: kube-state-metrics
         static_configs:
           - targets: ["kube-state-metrics.monitoring.svc.cluster.local:8080"]
+
       - job_name: kubernetes-nodes-cadvisor
         scheme: https
         metrics_path: /metrics/cadvisor
@@ -43,6 +146,7 @@ data:
             replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
           - source_labels: [__meta_kubernetes_node_name]
             target_label: node
+
   rules.yml: |
     groups:
       - name: food-ordering
@@ -54,6 +158,7 @@ data:
               severity: critical
             annotations:
               summary: Food ordering API metrics endpoint is unavailable.
+
           - alert: ElevatedHttp5xxRate
             expr: |
               sum(rate(food_ordering_http_requests_total{status=~"5.."}[5m]))
@@ -64,6 +169,7 @@ data:
               severity: warning
             annotations:
               summary: More than 5% of HTTP requests are returning 5xx responses.
+
           - alert: ElevatedHttpLatency
             expr: |
               histogram_quantile(0.95, sum by (le) (rate(food_ordering_http_request_duration_seconds_bucket[5m]))) > 2
@@ -249,6 +355,7 @@ spec:
     - name: http
       port: 9090
       targetPort: http
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
