@@ -1,11 +1,13 @@
 # Deployment and operations guide
 
-This directory documents a low-cost AWS learning deployment for Sunday Table:
-a combined frontend/API image from the root `Dockerfile`, deployed to EKS with
-private managed PostgreSQL and optional Redis provisioned by Terraform. GitHub
-Actions validation is separate from a manually dispatched, protected deploy
-workflow. Prometheus and Grafana provide in-cluster metrics; limited-retention
-CloudWatch EKS control-plane logs are optional operational telemetry.
+This directory documents the actual low-cost AWS learning deployment for Sunday
+Table: a combined frontend/API image from the root `Dockerfile`, deployed to
+EKS in `eu-north-1` with private managed PostgreSQL and optional Redis
+provisioned by Terraform. GitHub Actions validation is separate from a
+manually dispatched deploy workflow that uses GitHub OIDC and short-lived AWS
+STS credentials. Prometheus and Grafana provide in-cluster metrics; EKS
+control-plane API logs are retained in CloudWatch for seven days and CloudWatch
+Observability is not enabled by default.
 
 ## Start here
 
@@ -29,8 +31,8 @@ CloudWatch EKS control-plane logs are optional operational telemetry.
    run Terraform init, validate, and plan. Review the plan. `terraform apply`
    is always a separate manual action; this repository does not run it.
 4. Follow [GitHub Actions](GITHUB_ACTIONS.md) to configure the protected
-   environment and fixed-egress runner. Deployment only runs when manually
-   dispatched.
+      `aws-learning` environment and the required GitHub OIDC trust. Deployment
+      only runs when manually dispatched.
 5. Access the app and internal monitoring with `kubectl port-forward`; there
    is no public application load balancer by default.
 

@@ -10,8 +10,8 @@ before applying Terraform. No price or Free Tier coverage is guaranteed here.
 
 | Resource | Default configuration | Cost exposure |
 | --- | --- | --- |
-| Amazon EKS | One cluster; one `t3.medium` worker by default | The EKS control plane is billed while the cluster exists. |
-| EC2 worker / EBS | One managed worker; 20 GiB root disk | Instance-hours and EBS storage. A `t3.medium` is deliberately used because the app plus Prometheus/Grafana need more memory than a `t3.small` reliably provides. |
+| Amazon EKS | One cluster; one `t3.small` worker in the default learning deployment | The EKS control plane is billed while the cluster exists. |
+| EC2 worker / EBS | One managed worker; 20 GiB root disk | Instance-hours and EBS storage. The current learning deployment uses a `t3.small` worker in a public subnet with no NAT Gateway. |
 | Public IPv4 | Worker nodes use public subnets for outbound access without NAT | Public IPv4 address charges may apply. Security groups still restrict inbound access; the app itself is not exposed through a public Service. |
 | Amazon RDS PostgreSQL | `db.t3.micro`, Single-AZ, 20 GiB, one-day automated backup retention | Database instance-hours, storage, backups beyond included allowances, and data transfer. `terraform destroy` skips the final snapshot, so database data is deleted. |
 | Amazon ECR | One private repository; lifecycle retains five most recent images | Image storage and transfer. The repository is configured for deletion with its images during Terraform destroy. |
@@ -20,7 +20,7 @@ before applying Terraform. No price or Free Tier coverage is guaranteed here.
 | VPC networking | VPC, subnets, route tables, Internet Gateway, security groups | These primitives generally have no hourly charge; public IPv4 and data transfer can cost money. No NAT Gateway, VPC endpoints, Elastic IP, or load balancer is created by default. |
 | Optional ElastiCache Redis | Disabled by default; one `cache.t4g.micro` node if enabled | Cache instance-hours, data transfer, and related storage. Enabling Redis adds an ongoing charge; no replica or Multi-AZ failover is configured. |
 | S3 Terraform state bucket | Must be created separately; it is not managed by this stack | S3 storage, requests, and any chosen encryption/versioning features. Old state versions remain billable until expired/deleted. |
-| GitHub Actions runner | A self-hosted Linux runner with fixed egress is required for the deploy workflow | No AWS EC2 runner is created by Terraform. If you host the runner on paid compute, that compute is an additional charge. |
+| GitHub Actions runner | GitHub-hosted `ubuntu-latest` runners are used for validation and deployment | No AWS EC2 runner is created by Terraform. If you self-host a runner elsewhere, that compute is an additional charge. |
 
 IAM roles, policies, OIDC providers, and SSM parameter metadata do not usually
 have a direct hourly charge. EKS add-ons and Kubernetes monitoring consume
@@ -89,8 +89,9 @@ and retain/export state if required. Then delete the bucket's object versions
 and the bucket manually if you no longer need it. Do not delete the state
 bucket while Terraform resources still exist.
 
-Terraform does not manage the GitHub self-hosted runner. Stop or unregister it
-separately; if it runs on AWS compute, terminate that instance after cleanup.
+Terraform does not manage any GitHub runner. If you self-host a runner outside
+Terraform, stop or unregister it separately; if it runs on AWS compute,
+terminate that instance after cleanup.
 
 ## Verify and monitor billing
 

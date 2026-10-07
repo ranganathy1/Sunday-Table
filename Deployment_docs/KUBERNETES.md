@@ -26,7 +26,7 @@ Terraform output and configure access:
 
 ```powershell
 $ClusterName = terraform -chdir=terraform output -raw eks_cluster_name
-aws eks update-kubeconfig --region us-east-1 --name $ClusterName
+aws eks update-kubeconfig --region eu-north-1 --name $ClusterName
 kubectl get nodes
 ```
 
@@ -39,21 +39,20 @@ namespaces and cluster-scoped monitoring RBAC:
 
 ## Deploy and access
 
-Configure the protected GitHub `aws-learning` environment and fixed-egress
-self-hosted runner as described in [GitHub Actions](GITHUB_ACTIONS.md). Then
-manually dispatch `.github/workflows/deploy.yml`. It builds/pushes the image,
-reads generated settings from Systems Manager Parameter Store, runs the
-migration Job, and waits for app and monitoring rollouts. It does not run
-Terraform.
+Configure the protected GitHub `aws-learning` environment as described in
+[GitHub Actions](GITHUB_ACTIONS.md). Then manually dispatch
+`.github/workflows/deploy.yml`. It builds/pushes the image, reads generated
+settings from Systems Manager Parameter Store, runs the migration Job, and
+waits for app and monitoring rollouts. It does not run Terraform.
 
 The app has no public LoadBalancer. From an operator machine allowed to access
 the EKS API:
 
 ```powershell
-kubectl port-forward -n food-ordering service/food-ordering 8080:8000
+kubectl port-forward -n food-ordering service/food-ordering 8000:8000
 ```
 
-Open `http://localhost:8080`. In separate terminals, port-forward Grafana and
+Open `http://localhost:8000`. In separate terminals, port-forward Grafana and
 Prometheus:
 
 ```powershell
@@ -72,8 +71,8 @@ kubectl describe deployment food-ordering -n food-ordering
 kubectl logs -n food-ordering deployment/food-ordering --all-containers
 ```
 
-The EKS control-plane endpoint is public only for the fixed CIDR allow-list
-and also enables private endpoint access. Worker nodes use public subnets for
-outbound access without NAT; security groups restrict inbound traffic. RDS
-and optional Redis remain private. The single node/app replica is not highly
-available.
+The EKS control-plane endpoint is temporarily public for the learning CIDR
+allow-list, and private endpoint access is also enabled. Worker nodes use
+public subnets for outbound access without NAT; security groups restrict
+inbound traffic. RDS and optional Redis remain private. The single node/app
+replica is not highly available.

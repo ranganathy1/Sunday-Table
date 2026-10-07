@@ -1,34 +1,38 @@
 # Terraform
 
-`terraform/` prepares a cost-conscious AWS learning stack: VPC/subnets,
-Internet Gateway, EKS, one managed worker, ECR, Single-AZ RDS PostgreSQL,
-short-retention EKS control-plane logs, optional single-node ElastiCache Redis,
-Systems Manager SecureString credentials, and GitHub Actions OIDC access.
-There is no Terraform Cloud/HCP Terraform backend.
+  `terraform/` prepares the current cost-conscious AWS learning stack: VPC/subnets,
+  Internet Gateway, EKS cluster `food-ordering-learning-eks`, one managed worker,
+  ECR repository `food-ordering/app`, Single-AZ RDS PostgreSQL, seven-day EKS
+  control-plane logs, optional single-node ElastiCache Redis, Systems Manager
+  SecureString credentials, and GitHub Actions OIDC access. There is no Terraform
+  Cloud/HCP Terraform backend.
 
-Terraform does not provision AWS automatically in CI. No Terraform apply is
-part of either GitHub workflow. Review
-[Cost and Free Tier](COST_AND_FREE_TIER.md) before running any AWS operation.
+  Terraform does not provision AWS automatically in CI. No Terraform apply is
+  part of either GitHub workflow. Review
+  [Cost and Free Tier](COST_AND_FREE_TIER.md) before running any AWS operation.
 
-## Prerequisites and state
+  ## Prerequisites and state
 
-- Terraform 1.11+, AWS CLI, Docker, and an AWS identity with the permissions
-  needed to plan/apply the selected resources.
-- A stable trusted public egress CIDR for the EKS API, including the manual
-  deploy runner. Do not use `0.0.0.0/0`.
-- An S3 bucket for remote state, created and secured separately. Terraform
-  requires bucket name/backend settings at `init`; the stack does not create
+  - Terraform 1.11+, AWS CLI, Docker, and an AWS identity with the permissions
+    needed to plan/apply the selected resources.
+  - The current learning deployment uses `cluster_public_access_cidrs =
+    ["0.0.0.0/0"]` so GitHub-hosted runners can reach the EKS API. This is a
+    temporary learning configuration; tighten it for production or for a stable
+    private deployment pattern.
+  - An S3 bucket for remote state, created and secured separately. Terraform
+    requires bucket name/backend settings at `init`; the stack does not create
   the bucket. Enable versioning and block public access. State contains
   generated credentials, so restrict access.
 
-Copy the example and replace the placeholder repository, CIDR, and region:
+  Copy the example and replace the placeholder repository, CIDR, and region:
 
 ```powershell
 Copy-Item terraform\terraform.tfvars.example terraform\terraform.tfvars
 ```
 
 `terraform.tfvars` and state/plan files are ignored by Git. `enable_redis`
-defaults to `false`; enabling it creates a chargeable cache node.
+defaults to `false`; enabling it creates a chargeable cache node. The current
+learning deployment deliberately leaves Redis disabled.
 
 ## Initialize and validate without applying
 
@@ -38,7 +42,7 @@ From the repository root:
 terraform -chdir=terraform init `
   -backend-config="bucket=YOUR-STATE-BUCKET" `
   -backend-config="key=sunday-table/learning/terraform.tfstate" `
-  -backend-config="region=us-east-1" `
+  -backend-config="region=eu-north-1" `
   -backend-config="encrypt=true"
 
 terraform -chdir=terraform fmt -check -recursive

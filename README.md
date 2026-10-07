@@ -12,11 +12,12 @@ path on Amazon EKS.
   role-checked REST APIs, WebSockets, and Prometheus metrics.
 - **Data and events:** PostgreSQL, Redis for cross-pod order events.
 - **Production path:** one multi-stage root Docker image, Amazon ECR, Amazon EKS,
-  private RDS PostgreSQL, and optional private ElastiCache Redis. GitHub Actions
-  runs checks; a separate, manually dispatched protected workflow builds and
-  deploys through a fixed-egress self-hosted runner.
-- **Observability:** Prometheus, Grafana, Alertmanager rules, EKS metrics-server,
-  and CloudWatch Observability.
+  private RDS PostgreSQL, and optional private ElastiCache Redis. GitHub
+  Actions runs checks and a separate manually dispatched workflow builds and
+  deploys to EKS using GitHub OIDC and short-lived AWS STS credentials.
+- **Observability:** Prometheus, Grafana, Alertmanager rules, and EKS
+  metrics-server. CloudWatch Observability add-on is disabled in the default
+  learning deployment.
 
 ## Architecture
 
@@ -39,10 +40,11 @@ GitHub Actions (lint, tests, builds, Terraform validation)
   -> private RDS PostgreSQL + optional private TLS ElastiCache Redis
 ```
 
-Terraform provisions the VPC, subnets, routing, EKS, ECR, RDS, Redis, IAM roles,
-and an SSM SecureString parameter. Redis is optional and disabled by default.
-Prometheus/Grafana run in the EKS cluster; seven-day EKS API logs are retained
-in CloudWatch.
+Terraform provisions the VPC, subnets, routing, EKS, ECR, RDS, Redis, IAM
+roles, and an SSM SecureString parameter. Redis is optional and disabled by
+default. Prometheus/Grafana run in the EKS cluster; EKS control-plane API logs
+are retained in CloudWatch for seven days. CloudWatch Observability is not
+enabled by default.
 
 ## Repository map
 
@@ -174,9 +176,10 @@ Compose, use port `8080` instead of `8000`.
 
 ## AWS learning deployment
 
-The learning deployment is **GitHub Actions → ECR → EKS → private RDS**, with
-optional Redis, provisioned by Terraform. It deliberately creates no public
-application load balancer. Start with
+The implemented learning deployment is **GitHub Actions → ECR → EKS → private
+RDS** in AWS region `eu-north-1` for account `680476617223`, using cluster
+`food-ordering-learning-eks`. Redis is optional and currently disabled by
+default. It creates no public application load balancer. Start with
 [Deployment_docs/README.md](./Deployment_docs/README.md), then follow:
 
 - [Architecture](./Deployment_docs/ARCHITECTURE.md)
@@ -189,10 +192,13 @@ application load balancer. Start with
 - [Security](./Deployment_docs/SECURITY.md)
 - [Troubleshooting](./Deployment_docs/TROUBLESHOOTING.md)
 
-The EKS public API endpoint must be restricted to trusted fixed-egress CIDRs.
-The app is reached with `kubectl port-forward`; database and optional Redis
-endpoints remain private. No AWS keys or application credentials belong in
-source control. AWS services may incur charges; see
+The current temporary learning deployment uses
+`cluster_public_access_cidrs = ["0.0.0.0/0"]` so GitHub-hosted `ubuntu-latest`
+runners can reach the EKS API. This is a temporary learning configuration, not a
+recommended production pattern. The app is reached with `kubectl port-forward`;
+the database and optional Redis endpoints remain private. No AWS keys or
+application credentials belong in source control. AWS services may incur
+charges; see
 [Deployment_docs/COST_AND_FREE_TIER.md](./Deployment_docs/COST_AND_FREE_TIER.md).
 
 ## Checks

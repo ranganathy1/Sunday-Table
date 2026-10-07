@@ -10,24 +10,24 @@ resources.
 
 `.github/workflows/deploy.yml` is a separate `workflow_dispatch` workflow. It
 always runs repository checks on GitHub-hosted `ubuntu-latest`: backend lint
-and tests, frontend lint/tests (when a frontend test script is configured) and
-build, Terraform formatting and validation, and a Docker image build. No AWS
-credentials or AWS infrastructure are needed for these checks.
+and tests, frontend lint/build, Terraform formatting and validation, and a
+Docker image build. No AWS credentials or AWS infrastructure are needed for
+these checks.
 
 The ECR/EKS deployment job is optional. When manually dispatching the workflow,
 leave **Deploy to AWS** unchecked to run checks only; select it only after the
 AWS infrastructure and GitHub OIDC role/trust have been provisioned and the
 `aws-learning` environment variables below are configured. Deployment pushes
-an immutable commit-SHA image to ECR and runs `ci/deploy.sh` to apply
-Kubernetes workloads. It does **not** run Terraform.
+an immutable commit-SHA image to ECR, configures `kubectl`, fetches the app
+configuration from SSM, applies Kubernetes workloads, runs the migration Job,
+and waits for rollout completion. It does **not** run Terraform.
 
-The deployment also uses GitHub-hosted `ubuntu-latest`. Its outbound IPs are
-not fixed, while the EKS public API is restricted by
-`cluster_public_access_cidrs`; as a result, EKS access (including
-`kubectl`) may fail unless the runner can reach the cluster endpoint. Do not
-open the EKS API to `0.0.0.0/0` to work around this. Configure the GitHub
-`aws-learning` environment with branch restrictions and required reviewers
-before enabling deployment.
+The deployment uses GitHub-hosted `ubuntu-latest`, which does not have a fixed
+outbound IP. The current learning deployment intentionally uses
+`cluster_public_access_cidrs = ["0.0.0.0/0"]` so the runner can reach the EKS
+API. This is a temporary learning configuration and is not recommended for
+production. Configure the GitHub `aws-learning` environment with branch
+restrictions and required reviewers before enabling deployment.
 
 ## Terraform and AWS setup
 

@@ -2,8 +2,10 @@
 
 ## Terraform and AWS
 
-- **EKS public API timeout:** include the current operator and fixed-egress
-  runner CIDRs in `cluster_public_access_cidrs`. Do not widen to all addresses.
+- **EKS public API timeout:** the current learning deployment uses
+  `cluster_public_access_cidrs = ["0.0.0.0/0"]` so GitHub-hosted runners can
+  access the API. Tighten this for production or for a restricted private
+  deployment pattern.
 - **OIDC assume-role denied:** check the exact GitHub repository and protected
   environment name in Terraform, GitHub environment protection, job
   `id-token: write` permission, and role ARN.
@@ -33,17 +35,18 @@ kubectl get events -n food-ordering --sort-by=.lastTimestamp
   database URL, network/security-group blocks, or migration errors.
 - **Pods fail readiness:** `/ready` checks PostgreSQL and checks Redis only
   when configured as required. `/health` only proves the process responds.
-- **Deploy workflow cannot reach EKS:** verify the self-hosted runner egress
-  matches the EKS API CIDR allow-list and that initial namespace/RBAC
-  bootstrap was performed.
+- **Deploy workflow cannot reach EKS:** verify the current GitHub-hosted
+  runner can reach the EKS API and that initial namespace/RBAC bootstrap was
+  performed. In the current learning deployment, the public API allow-list is
+  intentionally broad to accommodate runner egress.
 - **Browser app is unavailable:** run
-  `kubectl port-forward -n food-ordering service/food-ordering 8080:8000`;
+  `kubectl port-forward -n food-ordering service/food-ordering 8000:8000`;
   no public LoadBalancer is provisioned.
 
 ## Monitoring and local checks
 
 ```powershell
-.\scripts\check-app-health.ps1 -BaseUrl http://localhost:8080
+.\scripts\check-app-health.ps1 -BaseUrl http://localhost:8000
 .\scripts\check-kubernetes-health.ps1
 kubectl get pods -n monitoring
 kubectl logs -n monitoring deployment/prometheus

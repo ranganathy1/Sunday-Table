@@ -9,20 +9,24 @@ Gateway so they can pull ECR and public monitoring images without a NAT
 Gateway. Public IPv4 and data-transfer charges may still apply. Security
 groups do not permit unsolicited inbound access to the worker nodes.
 
-The EKS API public endpoint is restricted to `cluster_public_access_cidrs`;
-include the fixed-egress deployment runner and trusted operator addresses. Do
-not use an unrestricted CIDR. The app uses a ClusterIP Service and
-`kubectl port-forward`; no public load balancer is created by default.
+The current learning deployment temporarily sets
+`cluster_public_access_cidrs = ["0.0.0.0/0"]` so GitHub-hosted runners can
+reach the EKS API. This is a temporary learning configuration for the public
+API endpoint and is not recommended for production. The app uses a ClusterIP
+Service and `kubectl port-forward`; no public load balancer is created by
+default.
 
 ## ECR, EKS, RDS, Redis
 
-- **ECR:** private repository, immutable commit-SHA tags, scan-on-push, and a
-  lifecycle policy that retains the latest five images.
-- **EKS:** managed control plane, one managed worker, VPC CNI/CoreDNS/
-  kube-proxy add-ons, and API control-plane logs retained for seven days.
-  CloudWatch Observability add-on is disabled by default.
-- **RDS:** encrypted PostgreSQL 16, private subnet group, Single-AZ, 20 GiB,
-  one-day backup retention, and no final snapshot on destroy. The DB security
+- **ECR:** private repository `food-ordering/app`, immutable commit-SHA tags,
+  scan-on-push, and a lifecycle policy that retains the latest five images.
+  Terraform destroys the repository and images during teardown.
+- **EKS:** managed control plane for cluster `food-ordering-learning-eks`,
+  Kubernetes 1.34, one managed worker node (`t3.small`) in a public subnet,
+  VPC CNI/CoreDNS/kube-proxy add-ons, and API control-plane logs retained for
+  seven days. CloudWatch Observability add-on is disabled by default.
+- **RDS:** encrypted PostgreSQL, instance type `db.t3.micro`, private subnet
+  group, Single-AZ, 20 GiB, and no final snapshot on destroy. The DB security
   group accepts port 5432 only from the EKS cluster security group.
 - **ElastiCache:** disabled by default. If enabled, one private TLS Redis node
   is created without a replica or Multi-AZ failover.
