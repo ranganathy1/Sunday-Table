@@ -11,15 +11,12 @@ umask 077
 secret_file="$(mktemp)"
 trap 'rm -f "$secret_file"' EXIT
 
-echo "Creating Kubernetes namespaces..."
+echo "Checking Kubernetes namespaces..."
 
-kubectl create namespace food-ordering \
-  --dry-run=client \
-  -o yaml | kubectl apply -f -
+kubectl get namespace food-ordering
+kubectl get namespace monitoring
 
-kubectl create namespace monitoring \
-  --dry-run=client \
-  -o yaml | kubectl apply -f -
+echo "Kubernetes namespaces are available."
 
 echo "Retrieving application configuration from SSM..."
 
