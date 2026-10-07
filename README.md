@@ -15,7 +15,9 @@ path on Amazon EKS.
   private RDS PostgreSQL, and optional private ElastiCache Redis. GitHub
   Actions runs checks and a separate manually dispatched workflow builds and
   deploys to EKS using GitHub OIDC and short-lived AWS STS credentials.
-- **Observability:** Prometheus, Grafana, Alertmanager rules, and EKS
+- **Observability:** Prometheus, Grafana, Alertmanager, and kube-state-metrics.
+EKS control-plane API logs are retained in CloudWatch for seven days.
+CloudWatch Observability is disabled in the default learning deployment.
   metrics-server. CloudWatch Observability add-on is disabled in the default
   learning deployment.
 

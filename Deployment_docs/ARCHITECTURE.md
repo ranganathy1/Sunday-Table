@@ -31,7 +31,7 @@ Manual deployment workflow
 Terraform -------------------------------------> AWS infrastructure
 Prometheus -> API metrics + Kubernetes state
 Grafana -> Prometheus; Alertmanager handles alert grouping
-CloudWatch -> seven-day EKS API control-plane logs
+EKS control plane -> CloudWatch Logs (7-day retention)
 ```
 
 RDS and optional ElastiCache run in private subnets. The database security
