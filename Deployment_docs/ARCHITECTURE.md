@@ -21,8 +21,13 @@ Browser --kubectl port-forward--> EKS ClusterIP Service -> API/frontend pod
                                                        |-> private RDS PostgreSQL
                                                        `-> optional private TLS Redis (disabled by default)
 
-GitHub Actions -> lint/tests/build/Terraform validation
-Manual workflow -> GitHub OIDC -> ECR -> EKS
+GitHub Actions CI
+    -> lint/tests/build/Terraform validation
+
+Manual deployment workflow
+    -> GitHub OIDC
+    -> ECR
+    -> EKS
 Terraform -------------------------------------> AWS infrastructure
 Prometheus -> API metrics + Kubernetes state
 Grafana -> Prometheus; Alertmanager handles alert grouping
